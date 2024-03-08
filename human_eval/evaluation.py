@@ -2,6 +2,7 @@ from collections import defaultdict, Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Union, Iterable, Dict
 import itertools
+import json
 
 import numpy as np
 import tqdm
@@ -106,5 +107,8 @@ def evaluate_functional_correctness(
     out_file = sample_file + "_results.jsonl"
     print(f"Writing results to {out_file}...")
     write_jsonl(out_file, tqdm.tqdm(combine_results(), total=n_samples))
+
+    with open('pass_at_k.json', 'w') as f:
+        json.dump(pass_at_k, f)
 
     return pass_at_k
