@@ -11,6 +11,7 @@ setup(
     description="",
     author="OpenAI",
     packages=find_packages(),
+    package_data={'human_eval': ['data/*']},
     install_requires=[
         str(r)
         for r in pkg_resources.parse_requirements(
