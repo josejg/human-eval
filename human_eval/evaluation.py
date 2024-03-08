@@ -59,13 +59,16 @@ def evaluate_functional_correctness(
         results = defaultdict(list)
 
         print("Reading samples...")
+        counts = Counter()
         for sample in tqdm.tqdm(stream_jsonl(sample_file)):
             task_id = sample["task_id"]
             completion = sample["completion"]
-            args = (problems[task_id], completion, timeout, completion_id[task_id])
-            future = executor.submit(check_correctness, *args)
-            futures.append(future)
-            completion_id[task_id] += 1
+            if (task_id, completion) not in counts:
+                args = (problems[task_id], completion, timeout, completion_id[task_id])
+                future = executor.submit(check_correctness, *args)
+                futures.append(future)
+                completion_id[task_id] += 1
+            counts[(task_id, completion)] += 1
             n_samples += 1
 
         assert len(completion_id) == len(problems), "Some problems are not attempted."
@@ -73,7 +76,9 @@ def evaluate_functional_correctness(
         print("Running test suites...")
         for future in tqdm.tqdm(as_completed(futures), total=len(futures)):
             result = future.result()
-            results[result["task_id"]].append((result["completion_id"], result))
+            times = counts[(result["task_id"], result["completion"])]
+            for _ in range(times):
+                results[result["task_id"]].append((result["completion_id"], result))
 
     # Calculate pass@k.
     total, correct = [], []

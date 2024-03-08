@@ -84,6 +84,7 @@ def check_correctness(problem: Dict, completion: str, timeout: float,
         passed=result[0] == "passed",
         result=result[0],
         completion_id=completion_id,
+        completion=completion,
     )
 
 
