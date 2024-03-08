@@ -9,6 +9,13 @@ import tqdm
 from human_eval.data import HUMAN_EVAL, read_problems, stream_jsonl, write_jsonl
 from human_eval.execution import check_correctness
 
+def basic_sanitize(completion: str) -> str:
+    import re
+    stop_words = [
+        "\nclass", "\n#", "\ndef", "\nassert", '\n"', "\nprint", "\nif",
+    ]
+    regex = '(' + '|'.join(stop_words) + ')'
+    return re.split(regex, completion)[0]
 
 def estimate_pass_at_k(
     num_samples: Union[int, List[int], np.ndarray],
@@ -62,6 +69,7 @@ def evaluate_functional_correctness(
         for sample in tqdm.tqdm(stream_jsonl(sample_file)):
             task_id = sample["task_id"]
             completion = sample["completion"]
+            completion = basic_sanitize(completion)
             args = (problems[task_id], completion, timeout, completion_id[task_id])
             future = executor.submit(check_correctness, *args)
             futures.append(future)
