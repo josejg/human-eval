@@ -47,7 +47,7 @@ def estimate_pass_at_k(
 def evaluate_functional_correctness(
     sample_file: str,
     k: List[int] = [1, 10, 100],
-    n_workers: int = 4,
+    n_workers: int = 16,
     timeout: float = 3.0,
     problem_file: str = HUMAN_EVAL,
 ):
@@ -67,17 +67,14 @@ def evaluate_functional_correctness(
         results = defaultdict(list)
 
         print("Reading samples...")
-        counts = Counter()
         for sample in tqdm.tqdm(stream_jsonl(sample_file)):
             task_id = sample["task_id"]
             completion = sample["completion"]
             completion = basic_sanitize(completion)
-            if (task_id, completion) not in counts:
-                args = (problems[task_id], completion, timeout, completion_id[task_id])
-                future = executor.submit(check_correctness, *args)
-                futures.append(future)
-                completion_id[task_id] += 1
-            counts[(task_id, completion)] += 1
+            args = (problems[task_id], completion, timeout, completion_id[task_id])
+            future = executor.submit(check_correctness, *args)
+            futures.append(future)
+            completion_id[task_id] += 1
             n_samples += 1
 
         assert len(completion_id) == len(problems), "Some problems are not attempted."
@@ -85,9 +82,7 @@ def evaluate_functional_correctness(
         print("Running test suites...")
         for future in tqdm.tqdm(as_completed(futures), total=len(futures)):
             result = future.result()
-            times = counts[(result["task_id"], result["completion"])]
-            for _ in range(times):
-                results[result["task_id"]].append((result["completion_id"], result))
+            results[result["task_id"]].append((result["completion_id"], result))
 
     # Calculate pass@k.
     total, correct = [], []
@@ -110,7 +105,10 @@ def evaluate_functional_correctness(
             result = results[task_id].pop(0)
             sample["result"] = result[1]["result"]
             sample["passed"] = result[1]["passed"]
-            yield sample
+            yield {'task_id': task_id,
+                   'completion': basic_sanitize(sample['completion']),
+                   'result': sample['result'],
+                   'passed': sample['passed']}
 
     out_file = sample_file + "_results.jsonl"
     print(f"Writing results to {out_file}...")
