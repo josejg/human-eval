@@ -35,8 +35,14 @@ def check_correctness(problem: Dict, completion: str, timeout: float,
             reliability_guard()
 
             # Construct the check program and run it.
+            entrypoint = problem['entry_point']
             check_program = (
-                problem["prompt"] + completion + "\n" +
+                # problem["prompt"] + completion + "\n" +
+                problem['prompt'] +
+                # new strategy, if completion includes entrypoint, prepend it with pass
+                # so that the imports are still included
+                ('\n    pass\n' if f'def {entrypoint}' in completion else '') +
+                completion + "\n" +
                 problem["test"] + "\n" +
                 f"check({problem['entry_point']})"
             )

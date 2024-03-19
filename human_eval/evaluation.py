@@ -9,14 +9,8 @@ import tqdm
 
 from human_eval.data import HUMAN_EVAL, read_problems, stream_jsonl, write_jsonl
 from human_eval.execution import check_correctness
+from human_eval.sanitize import prepare_solution
 
-def basic_sanitize(completion: str) -> str:
-    import re
-    stop_words = [
-        "\nclass", "\n#", "\ndef", "\nassert", '\n"', "\nprint", "\nif",
-    ]
-    regex = '(' + '|'.join(stop_words) + ')'
-    return re.split(regex, completion)[0]
 
 def estimate_pass_at_k(
     num_samples: Union[int, List[int], np.ndarray],
@@ -70,8 +64,8 @@ def evaluate_functional_correctness(
         for sample in tqdm.tqdm(stream_jsonl(sample_file)):
             task_id = sample["task_id"]
             completion = sample["completion"]
-            completion = basic_sanitize(completion)
-            args = (problems[task_id], completion, timeout, completion_id[task_id])
+            solution = prepare_solution(problems[task_id], completion)
+            args = (problems[task_id], solution, timeout, completion_id[task_id])
             future = executor.submit(check_correctness, *args)
             futures.append(future)
             completion_id[task_id] += 1
@@ -106,7 +100,7 @@ def evaluate_functional_correctness(
             sample["result"] = result[1]["result"]
             sample["passed"] = result[1]["passed"]
             yield {'task_id': task_id,
-                   'completion': basic_sanitize(sample['completion']),
+                   'completion': result[1]['completion'],
                    'result': sample['result'],
                    'passed': sample['passed']}
 
@@ -114,7 +108,8 @@ def evaluate_functional_correctness(
     print(f"Writing results to {out_file}...")
     write_jsonl(out_file, tqdm.tqdm(combine_results(), total=n_samples))
 
-    with open('pass_at_k.json', 'w') as f:
+    out_file = sample_file + "_pass_at_k.json"
+    with open(out_file, 'w') as f:
         json.dump(pass_at_k, f)
 
     return pass_at_k
