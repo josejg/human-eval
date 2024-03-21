@@ -33,7 +33,8 @@ def prepare_solution(problem, completion):
                 completion = block
                 break
         else:
-            completion = blocks[0]
+            if len(blocks) > 0:
+                completion = blocks[0]
 
     # Ensure the completion has the entry point
     # This is the common case for base models
