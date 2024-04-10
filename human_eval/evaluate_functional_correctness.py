@@ -20,9 +20,5 @@ def entry_point(
     print(results)
 
 
-def main():
-    typer.run(entry_point)
-
-
 if __name__ == "__main__":
-    main()
+    typer.run(entry_point)
